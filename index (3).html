@@ -1,0 +1,1985 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>🏎️ 大脑赛车手</title>
+<style>
+/* ===== CSS变量 & 全局重置 ===== */
+:root {
+  --sun: #FFD700;
+  --sun-light: #FFF176;
+  --green: #4CAF50;
+  --green-dark: #2E7D32;
+  --red: #FF5252;
+  --blue: #2196F3;
+  --blue-dark: #1565C0;
+  --purple: #9C27B0;
+  --orange: #FF6F00;
+  --sky: #87CEEB;
+  --road: #555;
+  --grass: #5D9B3D;
+  --white: #FFFFFF;
+  --card-bg: rgba(255,255,255,0.92);
+  --shadow: 0 8px 32px rgba(0,0,0,0.18);
+  --radius: 24px;
+  --radius-sm: 14px;
+  --font-main: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  width:100%; height:100%;
+  overflow:hidden;
+  font-family: var(--font-main);
+  background: #1a1a2e;
+  touch-action: manipulation;
+}
+
+/* ===== 页面切换系统 ===== */
+.page { display:none; width:100%; height:100%; position:absolute; top:0; left:0; overflow-y:auto; overflow-x:hidden; }
+.page.active { display:flex; flex-direction:column; }
+
+/* ===== 主界面背景 ===== */
+#page-main {
+  background: linear-gradient(180deg, #87CEEB 0%, #98D8F0 40%, #5D9B3D 40%, #4A8A2F 100%);
+  position: relative;
+}
+
+/* 云朵 */
+.cloud {
+  position: absolute;
+  background: white;
+  border-radius: 50px;
+  opacity: 0.9;
+  animation: floatCloud linear infinite;
+}
+.cloud::before, .cloud::after {
+  content:''; position:absolute; background:white; border-radius:50%;
+}
+.cloud-1 { width:120px; height:40px; top:4%; left:-10%; animation-duration:22s; }
+.cloud-1::before { width:60px; height:60px; top:-30px; left:20px; }
+.cloud-1::after { width:40px; height:40px; top:-20px; left:55px; }
+.cloud-2 { width:80px; height:28px; top:10%; left:-8%; animation-duration:28s; animation-delay:-8s; }
+.cloud-2::before { width:40px; height:40px; top:-20px; left:15px; }
+.cloud-3 { width:100px; height:35px; top:6%; left:-12%; animation-duration:18s; animation-delay:-14s; }
+.cloud-3::before { width:50px; height:50px; top:-25px; left:18px; }
+.cloud-3::after { width:35px; height:35px; top:-15px; left:50px; }
+
+@keyframes floatCloud {
+  from { left: -15%; }
+  to { left: 110%; }
+}
+
+/* 道路 */
+.road {
+  position: absolute;
+  bottom: 0; left:0; right:0;
+  height: 42%;
+  background: linear-gradient(180deg, #666 0%, #555 100%);
+  border-top: 6px solid #FFD700;
+}
+.road-lines {
+  position: absolute;
+  top:50%; left:0; right:0;
+  height:8px;
+  background: repeating-linear-gradient(90deg, #FFD700 0px, #FFD700 60px, transparent 60px, transparent 120px);
+  animation: roadMove 0.5s linear infinite;
+}
+@keyframes roadMove {
+  from { transform: translateX(0); }
+  to { transform: translateX(-120px); }
+}
+
+/* ===== 赛车 ===== */
+.car-container {
+  position: absolute;
+  bottom: 36%;
+  left: 15%;
+  z-index: 10;
+  animation: carBounce 0.3s ease-in-out infinite alternate;
+}
+@keyframes carBounce { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+
+.car-svg { width: 110px; filter: drop-shadow(4px 6px 8px rgba(0,0,0,0.4)); }
+
+/* ===== 僵尸 ===== */
+.zombie-container {
+  position: absolute;
+  bottom: 36%;
+  right: 10%;
+  z-index: 10;
+  display: flex;
+  gap: 12px;
+}
+.zombie {
+  font-size: 48px;
+  animation: zombieWobble 1.2s ease-in-out infinite alternate;
+  filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.3));
+}
+.zombie:nth-child(2) { animation-delay: 0.3s; }
+.zombie:nth-child(3) { animation-delay: 0.6s; }
+@keyframes zombieWobble {
+  from { transform: rotate(-5deg) translateY(0); }
+  to { transform: rotate(5deg) translateY(-6px); }
+}
+
+/* ===== 顶部仪表盘 ===== */
+.dashboard {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px 12px;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(8px);
+  gap: 12px;
+}
+.dash-card {
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 16px;
+  padding: 8px 14px;
+  text-align: center;
+  flex: 1;
+}
+.dash-label { font-size: 11px; color: rgba(255,255,255,0.8); font-weight: 600; letter-spacing: 0.5px; }
+.dash-value { font-size: 22px; font-weight: 900; color: var(--sun); margin-top: 2px; }
+.dash-value.blue { color: #64DFDF; }
+.exp-bar-wrap {
+  background: rgba(0,0,0,0.3);
+  border-radius: 10px;
+  height: 10px;
+  margin-top: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.exp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #64DFDF, #00B4D8);
+  border-radius: 10px;
+  transition: width 0.6s cubic-bezier(.34,1.56,.64,1);
+}
+
+/* ===== 每日语录 ===== */
+.daily-quote {
+  position: relative;
+  z-index: 20;
+  margin: 10px 16px;
+  background: rgba(255,255,255,0.88);
+  border-radius: 18px;
+  padding: 10px 16px;
+  text-align: center;
+  border-left: 5px solid var(--sun);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.quote-icon { font-size: 16px; }
+.quote-text { font-size: 13px; font-weight: 700; color: #333; line-height: 1.5; }
+
+/* ===== 底部主导航 ===== */
+.main-nav {
+  position: relative;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-top: auto;
+}
+.nav-btn {
+  background: var(--card-bg);
+  border: none;
+  border-radius: var(--radius);
+  padding: 18px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: var(--shadow), 0 4px 0 rgba(0,0,0,0.2);
+  transition: transform 0.12s, box-shadow 0.12s;
+  text-decoration: none;
+  color: inherit;
+  -webkit-user-select: none;
+}
+.nav-btn:active { transform: translateY(4px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.nav-btn .btn-icon { font-size: 36px; }
+.nav-btn .btn-label { font-size: 14px; font-weight: 800; color: #333; }
+.nav-btn .btn-sub { font-size: 11px; color: #888; }
+.nav-btn.green { background: linear-gradient(135deg, #69F0AE, #00C853); }
+.nav-btn.green .btn-label { color: white; }
+.nav-btn.blue { background: linear-gradient(135deg, #64B5F6, #1565C0); }
+.nav-btn.blue .btn-label { color: white; }
+.nav-btn.orange { background: linear-gradient(135deg, #FFB74D, #E65100); }
+.nav-btn.orange .btn-label { color: white; }
+.nav-btn.purple { background: linear-gradient(135deg, #CE93D8, #6A1B9A); }
+.nav-btn.purple .btn-label { color: white; }
+
+/* 隐藏入口 (妈妈专区) */
+.secret-trigger {
+  position: fixed;
+  bottom: 8px; left: 8px;
+  z-index: 100;
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  cursor: pointer;
+  padding: 4px;
+  -webkit-user-select: none;
+}
+
+/* ===== 通用页面头部 ===== */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 20px 16px;
+  background: rgba(0,0,0,0.05);
+  flex-shrink: 0;
+}
+.back-btn {
+  width: 48px; height: 48px;
+  background: rgba(255,255,255,0.9);
+  border: none; border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  flex-shrink: 0;
+  transition: transform 0.1s;
+  display: flex; align-items: center; justify-content: center;
+}
+.back-btn:active { transform: scale(0.9); }
+.page-title { font-size: 22px; font-weight: 900; color: white; text-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.page-sub { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 2px; }
+.page-content { padding: 16px; flex: 1; }
+
+/* ===== 娱乐时间页 ===== */
+#page-fun { background: linear-gradient(160deg, #1a1a4e 0%, #2d1b69 100%); }
+
+.fun-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.fun-btn {
+  background: var(--card-bg);
+  border: none;
+  border-radius: var(--radius);
+  padding: 22px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: var(--shadow), 0 6px 0 rgba(0,0,0,0.25);
+  transition: transform 0.12s, box-shadow 0.12s, opacity 0.3s;
+  -webkit-user-select: none;
+}
+.fun-btn:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+.fun-btn:disabled { opacity: 0.45; }
+.fun-btn .fun-icon { font-size: 44px; }
+.fun-btn .fun-name { font-size: 16px; font-weight: 900; color: #222; }
+.fun-btn .fun-badge { font-size: 11px; background: var(--green); color: white; padding: 2px 8px; border-radius: 20px; }
+.fun-btn.screen-btn { grid-column: 1/-1; background: linear-gradient(135deg, #424242, #212121); }
+.fun-btn.screen-btn .fun-name { color: #ccc; }
+.fun-btn.screen-btn .fun-badge { background: #666; }
+
+/* ===== 僵尸副本页 ===== */
+#page-zombie { background: linear-gradient(160deg, #1B5E20 0%, #33691E 100%); }
+
+.zombie-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.challenge-btn {
+  background: var(--card-bg);
+  border: none;
+  border-radius: var(--radius);
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  box-shadow: var(--shadow), 0 6px 0 rgba(0,0,0,0.3);
+  transition: transform 0.12s;
+  -webkit-user-select: none;
+}
+.challenge-btn:active { transform: translateY(5px); }
+.challenge-icon { font-size: 52px; flex-shrink: 0; }
+.challenge-info { text-align: left; }
+.challenge-title { font-size: 20px; font-weight: 900; color: #222; }
+.challenge-desc { font-size: 13px; color: #666; margin-top: 4px; }
+.challenge-reward { font-size: 12px; color: var(--orange); font-weight: 700; margin-top: 4px; }
+
+/* 输入区域 */
+.input-area {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-top: 16px;
+  box-shadow: var(--shadow);
+}
+.input-title { font-size: 18px; font-weight: 900; color: #333; margin-bottom: 16px; text-align:center; }
+.count-input-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin: 16px 0;
+}
+.count-btn {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  border: none;
+  font-size: 28px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  transition: transform 0.1s;
+  -webkit-user-select: none;
+}
+.count-btn:active { transform: scale(0.9); }
+.count-btn.minus { background: #EF5350; color: white; }
+.count-btn.plus { background: #66BB6A; color: white; }
+.count-display {
+  font-size: 52px;
+  font-weight: 900;
+  color: #333;
+  min-width: 80px;
+  text-align: center;
+}
+.confirm-btn {
+  width: 100%;
+  padding: 18px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 6px 0 rgba(0,0,0,0.25);
+  transition: transform 0.1s;
+  -webkit-user-select: none;
+  margin-top: 8px;
+}
+.confirm-btn:active { transform: translateY(5px); box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+.confirm-btn.green { background: linear-gradient(135deg, #69F0AE, #00C853); color: white; }
+.confirm-btn.red { background: linear-gradient(135deg, #FF6B6B, #C62828); color: white; }
+.confirm-btn.blue { background: linear-gradient(135deg, #64B5F6, #0D47A1); color: white; }
+.confirm-btn.gold { background: linear-gradient(135deg, #FFD700, #FF8F00); color: white; }
+
+/* 小僵尸战场 */
+.zombie-battle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0,0,0,0.15);
+  border-radius: var(--radius-sm);
+  min-height: 80px;
+  margin: 12px 0;
+}
+.mini-zombie {
+  font-size: 32px;
+  animation: zombieWobble 1s ease-in-out infinite alternate;
+  transition: all 0.3s;
+}
+.mini-zombie.dying {
+  animation: zombieDie 0.5s ease-out forwards;
+}
+@keyframes zombieDie {
+  0% { transform: scale(1) rotate(0); opacity: 1; }
+  50% { transform: scale(1.4) rotate(20deg); opacity: 0.8; }
+  100% { transform: scale(0) rotate(90deg); opacity: 0; }
+}
+
+/* 妈妈验证弹窗 */
+.mom-verify {
+  text-align: center;
+  padding: 8px 0;
+}
+.mom-verify .verify-icon { font-size: 48px; margin-bottom: 12px; }
+.mom-verify .verify-title { font-size: 18px; font-weight: 900; color: #333; margin-bottom: 8px; }
+.mom-verify .verify-sub { font-size: 13px; color: #666; margin-bottom: 16px; }
+.pin-input {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.pin-dot {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #ddd;
+  transition: background 0.2s;
+}
+.pin-dot.filled { background: var(--blue); }
+.numpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 240px;
+  margin: 0 auto;
+}
+.numpad-btn {
+  padding: 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: #f0f0f0;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #ccc;
+  transition: transform 0.1s;
+  -webkit-user-select: none;
+}
+.numpad-btn:active { transform: translateY(3px); box-shadow: none; }
+.numpad-btn.del { background: #ffcdd2; color: #c62828; font-size: 18px; }
+.numpad-btn.ok { background: #c8e6c9; color: #2e7d32; }
+.hold-btn {
+  width: 100%;
+  padding: 18px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #FF9800, #E65100);
+  color: white;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  margin-top: 8px;
+  position: relative;
+  overflow: hidden;
+  -webkit-user-select: none;
+}
+.hold-btn .hold-progress {
+  position: absolute;
+  top:0; left:0;
+  height:100%;
+  width:0%;
+  background: rgba(255,255,255,0.3);
+  transition: none;
+}
+
+/* ===== 大脑进化页 ===== */
+#page-brain { background: linear-gradient(160deg, #0D1B2A 0%, #1B263B 100%); }
+
+.brain-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.brain-icon-wrap {
+  position: relative;
+  width: 140px; height: 140px;
+  display: flex; align-items: center; justify-content: center;
+}
+.brain-glow {
+  position: absolute;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(100,223,223,0.4) 0%, transparent 70%);
+  animation: brainPulse 2s ease-in-out infinite;
+}
+@keyframes brainPulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.2); opacity: 1; }
+}
+.brain-emoji { font-size: 88px; position: relative; z-index: 1; }
+
+.attrs-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+.attr-row {
+  background: rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.attr-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.attr-name { font-size: 15px; font-weight: 700; color: white; }
+.attr-val { font-size: 18px; font-weight: 900; color: var(--sun); }
+.attr-bar-bg { height: 10px; background: rgba(255,255,255,0.15); border-radius: 10px; overflow:hidden; }
+.attr-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.8s cubic-bezier(.34,1.56,.64,1);
+}
+.attr-bar-fill.int { background: linear-gradient(90deg, #64DFDF, #00B4D8); }
+.attr-bar-fill.end { background: linear-gradient(90deg, #69F0AE, #00C853); }
+.attr-bar-fill.cre { background: linear-gradient(90deg, #CE93D8, #9C27B0); }
+
+.brain-actions { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+
+/* 神经元动画 */
+.neuron-canvas {
+  position: fixed;
+  top:0; left:0; right:0; bottom:0;
+  z-index: 999;
+  pointer-events: none;
+  display: none;
+}
+.neuron-canvas.show { display: block; }
+
+/* ===== 勋章陈列室页 ===== */
+#page-medals { background: linear-gradient(160deg, #3E1F00 0%, #5D2E00 100%); }
+
+.medal-summary {
+  background: rgba(255,215,0,0.15);
+  border: 2px solid rgba(255,215,0,0.4);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.medal-count { font-size: 52px; font-weight: 900; color: var(--sun); }
+.medal-label { font-size: 14px; color: rgba(255,255,255,0.8); margin-top: 4px; }
+
+.goals-list { display: flex; flex-direction: column; gap: 14px; }
+.goal-card {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.goal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.goal-title { font-size: 15px; font-weight: 700; color: white; }
+.goal-status { font-size: 13px; color: var(--sun); font-weight: 700; }
+.goal-bar-bg { height: 14px; background: rgba(255,255,255,0.15); border-radius: 10px; overflow:hidden; }
+.goal-bar-fill { height: 100%; border-radius: 10px; transition: width 1s cubic-bezier(.34,1.56,.64,1); }
+.goal-bar-fill.gold { background: linear-gradient(90deg, var(--sun), #FF8F00); }
+.goal-bar-fill.silver { background: linear-gradient(90deg, #B0BEC5, #607D8B); }
+.goal-bar-fill.bronze { background: linear-gradient(90deg, #FFAB40, #E65100); }
+.goal-reward { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 6px; }
+
+.weekly-medals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-start;
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(0,0,0,0.2);
+  border-radius: var(--radius-sm);
+}
+.medal-chip {
+  font-size: 28px;
+  animation: medalShine 2s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.15s);
+}
+@keyframes medalShine {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.15) rotate(8deg); }
+}
+
+/* ===== 妈妈专区页 ===== */
+#page-mom { background: linear-gradient(160deg, #880E4F 0%, #4A148C 100%); }
+
+.mom-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 16px;
+  flex-shrink: 0;
+}
+.mom-tab {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-user-select: none;
+}
+.mom-tab.active { background: white; color: #4A148C; }
+.mom-tab:not(.active) { background: rgba(255,255,255,0.2); color: white; }
+
+.mom-panel { display: none; }
+.mom-panel.active { display: block; }
+
+/* 急救包 */
+.sos-title { font-size: 20px; font-weight: 900; color: white; text-align:center; margin-bottom: 4px; }
+.sos-sub { font-size: 13px; color: rgba(255,255,255,0.7); text-align:center; margin-bottom: 20px; }
+.sos-btns { display: flex; flex-direction: column; gap: 14px; }
+.sos-btn {
+  padding: 22px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow);
+  -webkit-user-select: none;
+  transition: transform 0.1s;
+}
+.sos-btn:active { transform: scale(0.97); }
+.sos-btn .sos-icon { font-size: 32px; }
+.sos-btn.breath { background: linear-gradient(135deg, #B2EBF2, #00BCD4); color: #00363a; }
+.sos-btn.water { background: linear-gradient(135deg, #BBDEFB, #1976D2); color: #0D47A1; }
+.sos-btn.pause { background: linear-gradient(135deg, #D7CCC8, #6D4C41); color: white; }
+
+/* 台词本 */
+.script-tabs { display:flex; gap:8px; margin-bottom:16px; }
+.script-tab {
+  flex:1; padding:10px;
+  border:none; border-radius:10px;
+  font-size:13px; font-weight:700;
+  cursor:pointer; -webkit-user-select:none;
+}
+.script-tab.active { background:var(--sun); color:#333; }
+.script-tab:not(.active) { background:rgba(255,255,255,0.15); color:white; }
+.script-card {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.script-bad {
+  background: rgba(255,82,82,0.2);
+  border-left: 4px solid #FF5252;
+  padding: 14px 16px;
+}
+.script-bad-label { font-size: 11px; font-weight: 700; color: #FF5252; letter-spacing:1px; margin-bottom: 6px; }
+.script-bad-text { font-size: 14px; color: #ffcdd2; line-height: 1.6; }
+.script-good {
+  background: rgba(105,240,174,0.15);
+  border-left: 4px solid #69F0AE;
+  padding: 14px 16px;
+}
+.script-good-label { font-size: 11px; font-weight: 700; color: #69F0AE; letter-spacing:1px; margin-bottom: 6px; }
+.script-good-text { font-size: 14px; color: #c8e6c9; line-height: 1.6; }
+.script-scroll-hint { font-size:12px; color:rgba(255,255,255,0.4); text-align:center; margin-top:8px; }
+
+/* ===== 冥想全屏 ===== */
+#meditation-overlay {
+  display:none;
+  position:fixed;
+  top:0; left:0; right:0; bottom:0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.92);
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:24px;
+}
+#meditation-overlay.show { display:flex; }
+.med-circle {
+  width:160px; height:160px;
+  border-radius:50%;
+  border: 4px solid rgba(100,223,223,0.5);
+  display:flex; align-items:center; justify-content:center;
+  position:relative;
+}
+.med-inner {
+  width:110px; height:110px;
+  border-radius:50%;
+  background: radial-gradient(circle, rgba(100,223,223,0.6), rgba(100,223,223,0.1));
+  animation: medBreath 4s ease-in-out infinite;
+}
+@keyframes medBreath {
+  0%,100% { transform:scale(0.8); opacity:0.6; }
+  50% { transform:scale(1); opacity:1; }
+}
+.med-count { font-size: 64px; font-weight:900; color:white; }
+.med-text { font-size: 18px; color:rgba(255,255,255,0.7); text-align:center; line-height:1.8; }
+.med-skip {
+  padding:14px 32px;
+  border:2px solid rgba(255,255,255,0.3);
+  background:transparent;
+  color:rgba(255,255,255,0.6);
+  border-radius:30px;
+  font-size:14px;
+  cursor:pointer;
+}
+
+/* ===== 通用弹窗 ===== */
+.modal-overlay {
+  display:none;
+  position:fixed;
+  top:0; left:0; right:0; bottom:0;
+  z-index: 2000;
+  background:rgba(0,0,0,0.6);
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.modal-overlay.show { display:flex; }
+.modal-box {
+  background:white;
+  border-radius: 28px;
+  padding:28px 24px;
+  width:100%;
+  max-width:400px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+  animation: modalIn 0.3s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes modalIn {
+  from { transform:scale(0.7); opacity:0; }
+  to { transform:scale(1); opacity:1; }
+}
+.modal-title { font-size:20px; font-weight:900; color:#222; text-align:center; margin-bottom:8px; }
+.modal-text { font-size:14px; color:#666; text-align:center; line-height:1.7; margin-bottom:20px; }
+.modal-btns { display:flex; gap:12px; }
+.modal-btn {
+  flex:1; padding:16px;
+  border:none; border-radius:16px;
+  font-size:16px; font-weight:800;
+  cursor:pointer;
+  -webkit-user-select:none;
+  transition: transform 0.1s;
+}
+.modal-btn:active { transform:scale(0.96); }
+.modal-btn.primary { background: linear-gradient(135deg, #69F0AE, #00C853); color:white; }
+.modal-btn.secondary { background: #f0f0f0; color:#666; }
+.modal-btn.danger { background: linear-gradient(135deg, #FF6B6B, #C62828); color:white; }
+
+/* ===== 庆祝粒子 ===== */
+.confetti-container {
+  position:fixed;
+  top:0; left:0; right:0; bottom:0;
+  pointer-events:none;
+  z-index:8000;
+  display:none;
+}
+.confetti-container.show { display:block; }
+.confetti {
+  position:absolute;
+  width:10px; height:10px;
+  opacity:0;
+  animation: confettiFall 1.5s ease-out forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(-20px) rotate(0deg); opacity:1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity:0; }
+}
+
+/* ===== 升级提示横幅 ===== */
+.level-up-banner {
+  display:none;
+  position:fixed;
+  top:50%; left:50%;
+  transform: translate(-50%,-50%) scale(0);
+  z-index: 7000;
+  background: linear-gradient(135deg, #FFD700, #FF8F00);
+  border-radius: 24px;
+  padding: 24px 40px;
+  text-align:center;
+  box-shadow: 0 16px 48px rgba(255,143,0,0.5);
+}
+.level-up-banner.show {
+  display:block;
+  animation: levelUpPop 0.5s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+@keyframes levelUpPop {
+  to { transform: translate(-50%,-50%) scale(1); }
+}
+.lvl-text { font-size:28px; font-weight:900; color:white; }
+.lvl-sub { font-size:16px; color:rgba(255,255,255,0.85); margin-top:6px; }
+
+/* ===== 射击动画 ===== */
+.shoot-effect {
+  position:fixed;
+  pointer-events:none;
+  z-index:6000;
+  font-size:40px;
+  display:none;
+  animation: shootAcross 0.8s ease-in forwards;
+}
+@keyframes shootAcross {
+  0% { left:15%; top:50%; transform:translateY(-50%); opacity:1; }
+  100% { left:90%; top:50%; transform:translateY(-50%) scale(2); opacity:0; }
+}
+
+/* 页面滚动美化 */
+.page-content::-webkit-scrollbar { width:4px; }
+.page-content::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.2); border-radius:4px; }
+</style>
+</head>
+<body>
+
+<!-- ===== 主界面 ===== -->
+<div id="page-main" class="page active">
+  <!-- 云朵 -->
+  <div class="cloud cloud-1"></div>
+  <div class="cloud cloud-2"></div>
+  <div class="cloud cloud-3"></div>
+  <!-- 道路 -->
+  <div class="road"><div class="road-lines"></div></div>
+  <!-- 赛车 -->
+  <div class="car-container">
+    <svg class="car-svg" viewBox="0 0 120 60" xmlns="http://www.w3.org/2000/svg">
+      <!-- 车身 -->
+      <rect x="10" y="22" width="100" height="28" rx="10" fill="#E53935"/>
+      <!-- 车顶 -->
+      <rect x="30" y="10" width="55" height="22" rx="8" fill="#EF9A9A"/>
+      <!-- 窗户 -->
+      <rect x="35" y="13" width="22" height="16" rx="5" fill="#B3E5FC" opacity="0.9"/>
+      <rect x="62" y="13" width="18" height="16" rx="5" fill="#B3E5FC" opacity="0.9"/>
+      <!-- 车轮 -->
+      <circle cx="28" cy="50" r="11" fill="#212121"/>
+      <circle cx="28" cy="50" r="7" fill="#424242"/>
+      <circle cx="28" cy="50" r="3" fill="#FFD700"/>
+      <circle cx="90" cy="50" r="11" fill="#212121"/>
+      <circle cx="90" cy="50" r="7" fill="#424242"/>
+      <circle cx="90" cy="50" r="3" fill="#FFD700"/>
+      <!-- 排气火焰 -->
+      <ellipse cx="8" cy="36" rx="8" ry="5" fill="#FF6F00" opacity="0.9"/>
+      <ellipse cx="4" cy="36" rx="5" ry="3" fill="#FFD700"/>
+      <!-- 车灯 -->
+      <ellipse cx="110" cy="30" rx="5" ry="4" fill="#FFF176"/>
+      <!-- 数字 -->
+      <text x="55" y="42" font-size="12" font-weight="900" fill="white" text-anchor="middle">7</text>
+    </svg>
+  </div>
+  <!-- 僵尸 -->
+  <div class="zombie-container">
+    <div class="zombie">🧟</div>
+    <div class="zombie">🧟</div>
+    <div class="zombie">🧟</div>
+  </div>
+
+  <!-- 仪表盘 -->
+  <div class="dashboard">
+    <div class="dash-card">
+      <div class="dash-label">☀️ 阳光值</div>
+      <div class="dash-value" id="sun-display">0</div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-label">🏅 勋章</div>
+      <div class="dash-value" id="medal-display">0</div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-label">🧠 大脑经验</div>
+      <div class="dash-value blue" id="exp-display">0</div>
+      <div class="exp-bar-wrap"><div class="exp-bar-fill" id="exp-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- 每日语录 -->
+  <div class="daily-quote">
+    <span class="quote-icon">💬</span>
+    <div class="quote-text" id="quote-text">今天的错题，是明天的超级燃料！</div>
+  </div>
+
+  <!-- 主导航 -->
+  <div class="main-nav">
+    <button class="nav-btn green" onclick="showPage('page-fun')">
+      <span class="btn-icon">🎮</span>
+      <span class="btn-label">时光游戏</span>
+      <span class="btn-sub">今日自主选择</span>
+    </button>
+    <button class="nav-btn blue" onclick="showPage('page-zombie')">
+      <span class="btn-icon">⚔️</span>
+      <span class="btn-label">消灭僵尸</span>
+      <span class="btn-sub">复习生字/单词</span>
+    </button>
+    <button class="nav-btn orange" onclick="showPage('page-brain')">
+      <span class="btn-icon">🧠</span>
+      <span class="btn-label">大脑进化</span>
+      <span class="btn-sub">错题变超能力</span>
+    </button>
+    <button class="nav-btn purple" onclick="showPage('page-medals')">
+      <span class="btn-icon">🏆</span>
+      <span class="btn-label">勋章宝库</span>
+      <span class="btn-sub">查看大奖进度</span>
+    </button>
+  </div>
+
+  <!-- 隐藏的妈妈入口 - 心理学设计：隐藏在不起眼的角落，避免孩子误触 -->
+  <!-- 连续点击5次触发，增加了操作门槛保证私密性 -->
+  <div class="secret-trigger" id="secret-trigger" onclick="handleSecretTrigger()">v1.0</div>
+</div>
+
+
+<!-- ===== 娱乐时间页 ===== -->
+<div id="page-fun" class="page">
+  <div style="background:linear-gradient(160deg,#1a1a4e,#2d1b69);flex:1;display:flex;flex-direction:column;">
+    <div class="page-header" style="background:transparent;">
+      <button class="back-btn" onclick="showPage('page-main')">←</button>
+      <div>
+        <div class="page-title">🎮 时光游戏菜单</div>
+        <div class="page-sub">今天想做什么？选一个得能量勋章！</div>
+      </div>
+    </div>
+    <div class="page-content">
+      <!-- SDT理论：提供真实选择感，让孩子感受自主权 -->
+      <!-- 点击非屏幕选项 = 主动选择有价值活动，获得即时奖励 -->
+      <div class="fun-grid">
+        <button class="fun-btn" id="fun-draw" onclick="chooseFun('画画','🎨')">
+          <span class="fun-icon">🎨</span>
+          <span class="fun-name">画 画</span>
+          <span class="fun-badge">+1 能量勋章</span>
+        </button>
+        <button class="fun-btn" id="fun-sport" onclick="chooseFun('运动','⚽')">
+          <span class="fun-icon">⚽</span>
+          <span class="fun-name">运 动</span>
+          <span class="fun-badge">+1 能量勋章</span>
+        </button>
+        <button class="fun-btn" id="fun-create" onclick="chooseFun('创意','🛠️')">
+          <span class="fun-icon">🛠️</span>
+          <span class="fun-name">创 意</span>
+          <span class="fun-badge">+1 能量勋章</span>
+        </button>
+        <button class="fun-btn" id="fun-ai" onclick="chooseFun('AI聊天','🤖')">
+          <span class="fun-icon">🤖</span>
+          <span class="fun-name">AI 聊天</span>
+          <span class="fun-badge">+1 能量勋章</span>
+        </button>
+        <!-- 屏幕选项：设置摩擦成本，温和引导 -->
+        <button class="fun-btn screen-btn" id="fun-screen" onclick="chooseScreen()">
+          <span class="fun-icon">📱</span>
+          <span class="fun-name">看 屏 幕</span>
+          <span class="fun-badge">不得勋章</span>
+        </button>
+      </div>
+      <div style="margin-top:16px;background:rgba(255,255,255,0.08);border-radius:16px;padding:14px;text-align:center;">
+        <div style="font-size:13px;color:rgba(255,255,255,0.6);">今日已选：<span id="today-choice-text" style="color:#69F0AE;font-weight:700;">还没选哦</span></div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px;">每天只能选一次，要好好想哦！</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== 僵尸副本页 ===== -->
+<div id="page-zombie" class="page">
+  <div style="background:linear-gradient(160deg,#1B5E20,#33691E);flex:1;display:flex;flex-direction:column;">
+    <div class="page-header" style="background:transparent;">
+      <button class="back-btn" onclick="showPage('page-main')">←</button>
+      <div>
+        <div class="page-title">⚔️ 消灭僵尸副本</div>
+        <div class="page-sub">把复习的生字/单词变成消灭僵尸的子弹！</div>
+      </div>
+    </div>
+    <div class="page-content">
+      <!-- 第一步：选择类型 -->
+      <div id="zombie-select" class="zombie-selector">
+        <button class="challenge-btn" onclick="startZombieChallenge('语文')">
+          <span class="challenge-icon">📖</span>
+          <div class="challenge-info">
+            <div class="challenge-title">挑战语文僵尸</div>
+            <div class="challenge-desc">输入今天复习的生字数量</div>
+            <div class="challenge-reward">每字 = +5 ☀️阳光值</div>
+          </div>
+        </button>
+        <button class="challenge-btn" onclick="startZombieChallenge('英语')">
+          <span class="challenge-icon">🔤</span>
+          <div class="challenge-info">
+            <div class="challenge-title">挑战英语僵尸</div>
+            <div class="challenge-desc">输入今天复习的单词数量</div>
+            <div class="challenge-reward">每词 = +5 ☀️阳光值</div>
+          </div>
+        </button>
+        <div style="background:rgba(255,255,255,0.1);border-radius:16px;padding:14px;text-align:center;">
+          <div style="font-size:13px;color:rgba(255,255,255,0.7);">💡 需要妈妈确认才能打败僵尸哦</div>
+        </div>
+      </div>
+
+      <!-- 第二步：输入数量 + 战场 -->
+      <div id="zombie-input" style="display:none;">
+        <div class="input-area">
+          <div class="input-title" id="zombie-input-title">今天复习了多少个？</div>
+          <div class="zombie-battle" id="zombie-battle-field"></div>
+          <div class="count-input-wrap">
+            <button class="count-btn minus" onclick="adjustCount(-1)">−</button>
+            <div class="count-display" id="zombie-count">0</div>
+            <button class="count-btn plus" onclick="adjustCount(1)">+</button>
+          </div>
+          <button class="confirm-btn green" onclick="showMomVerify('zombie')" id="call-mom-btn">📢 呼叫妈妈确认！</button>
+          <button class="confirm-btn secondary" style="background:#eee;color:#666;margin-top:8px;" onclick="cancelZombie()">返 回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== 大脑进化页 ===== -->
+<div id="page-brain" class="page">
+  <div style="background:linear-gradient(160deg,#0D1B2A,#1B263B);flex:1;display:flex;flex-direction:column;">
+    <div class="page-header" style="background:transparent;">
+      <button class="back-btn" onclick="showPage('page-main')">←</button>
+      <div>
+        <div class="page-title">🧠 大脑进化中心</div>
+        <div class="page-sub">每次复习错题，大脑真的会变强！</div>
+      </div>
+    </div>
+    <div class="page-content">
+      <div class="brain-center">
+        <div class="brain-icon-wrap">
+          <div class="brain-glow"></div>
+          <div class="brain-emoji">🧠</div>
+        </div>
+
+        <div class="attrs-grid">
+          <div class="attr-row">
+            <div class="attr-top">
+              <span class="attr-name">🔭 智力值</span>
+              <span class="attr-val" id="attr-int">0</span>
+            </div>
+            <div class="attr-bar-bg"><div class="attr-bar-fill int" id="bar-int" style="width:0%"></div></div>
+          </div>
+          <div class="attr-row">
+            <div class="attr-top">
+              <span class="attr-name">💪 耐力值</span>
+              <span class="attr-val" id="attr-end">0</span>
+            </div>
+            <div class="attr-bar-bg"><div class="attr-bar-fill end" id="bar-end" style="width:0%"></div></div>
+          </div>
+          <div class="attr-row">
+            <div class="attr-top">
+              <span class="attr-name">✨ 创造力</span>
+              <span class="attr-val" id="attr-cre">0</span>
+            </div>
+            <div class="attr-bar-bg"><div class="attr-bar-fill cre" id="bar-cre" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        <div class="brain-actions">
+          <!-- 成长型思维核心：将错题重新定义为"大脑升级的材料" -->
+          <button class="confirm-btn blue" onclick="showMomVerify('brain')">✍️ 我今天复习了错题！</button>
+          <div style="background:rgba(255,255,255,0.07);border-radius:14px;padding:14px;text-align:center;">
+            <div style="font-size:13px;color:rgba(255,255,255,0.6);">📊 今日大脑升级次数：<span id="brain-today" style="color:#64DFDF;font-weight:700;">0</span> 次</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== 勋章宝库页 ===== -->
+<div id="page-medals" class="page">
+  <div style="background:linear-gradient(160deg,#3E1F00,#5D2E00);flex:1;display:flex;flex-direction:column;">
+    <div class="page-header" style="background:transparent;">
+      <button class="back-btn" onclick="showPage('page-main')">←</button>
+      <div>
+        <div class="page-title">🏆 勋章宝库</div>
+        <div class="page-sub">向大目标冲刺！</div>
+      </div>
+    </div>
+    <div class="page-content">
+      <div class="medal-summary">
+        <div class="medal-count" id="total-medals-display">0</div>
+        <div class="medal-label">枚能量勋章</div>
+        <div style="margin-top:12px;display:flex;justify-content:center;gap:20px;">
+          <div style="text-align:center;">
+            <div style="font-size:20px;font-weight:900;color:white;" id="week-medals-display">0</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.6);">本周</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:20px;font-weight:900;color:white;" id="screen-days-display">0</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.6);">屏幕日</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="goals-list">
+        <!-- 目标梯级设计：短中长期，持续给予期待感 -->
+        <div class="goal-card">
+          <div class="goal-top">
+            <div class="goal-title">🍖 短期：本周末大餐/郊游</div>
+            <div class="goal-status" id="goal1-status">0/7</div>
+          </div>
+          <div class="goal-bar-bg"><div class="goal-bar-fill gold" id="goal1-bar" style="width:0%"></div></div>
+          <div class="goal-reward">需要 7 枚本周勋章</div>
+        </div>
+        <div class="goal-card">
+          <div class="goal-top">
+            <div class="goal-title">🎨 中期：赛车新喷漆 + 特权</div>
+            <div class="goal-status" id="goal2-status">0/25</div>
+          </div>
+          <div class="goal-bar-bg"><div class="goal-bar-fill silver" id="goal2-bar" style="width:0%"></div></div>
+          <div class="goal-reward">需要累计 25 枚勋章</div>
+        </div>
+        <div class="goal-card">
+          <div class="goal-top">
+            <div class="goal-title">🎁 终极：创造者大礼包</div>
+            <div class="goal-status" id="goal3-status">0/100</div>
+          </div>
+          <div class="goal-bar-bg"><div class="goal-bar-fill bronze" id="goal3-bar" style="width:0%"></div></div>
+          <div class="goal-reward">需要累计 100 枚勋章</div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,0.8);margin-bottom:8px;">本周勋章展示 🌟</div>
+        <div class="weekly-medals" id="weekly-medals-grid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== 妈妈专区页 ===== -->
+<!-- 心理学设计意图：这是给妈妈的秘密工具包，帮助她：
+     1. 在情绪失控前找到生理调节手段
+     2. 用正确的苏格拉底式提问替代"直接喂答案"
+     此页面必须对孩子保密，否则权威性降低 -->
+<div id="page-mom" class="page">
+  <div style="background:linear-gradient(160deg,#880E4F,#4A148C);flex:1;display:flex;flex-direction:column;">
+    <div class="page-header" style="background:transparent;">
+      <button class="back-btn" onclick="showPage('page-main')">←</button>
+      <div>
+        <div class="page-title">🔐 妈妈专属辅导区</div>
+        <div class="page-sub">科学育儿 · 情绪调节 · 辅导话术</div>
+      </div>
+    </div>
+    <div class="mom-tabs">
+      <button class="mom-tab active" onclick="switchMomTab(0)">🆘 情绪急救</button>
+      <button class="mom-tab" onclick="switchMomTab(1)">📝 辅导台词本</button>
+      <button class="mom-tab" onclick="switchMomTab(2)">📊 数据</button>
+    </div>
+
+    <!-- 急救包 -->
+    <div class="mom-panel active" id="mom-panel-0">
+      <div style="padding:0 16px;">
+        <div class="sos-title">🚨 辅导情绪急救包</div>
+        <div class="sos-sub">感到快要爆发？先选一个，保护孩子的安全感</div>
+        <div class="sos-btns">
+          <button class="sos-btn breath" onclick="startMeditation('深呼吸练习','让我们一起深呼吸\n吸气4秒 · 屏住4秒\n呼气4秒 · 放松')">
+            <span class="sos-icon">🌬️</span>
+            <div>
+              <div style="font-size:17px;font-weight:900;">深 呼 吸</div>
+              <div style="font-size:12px;opacity:0.7;margin-top:2px;">30秒 4-4-4 呼吸法</div>
+            </div>
+          </button>
+          <button class="sos-btn water" onclick="startMeditation('喝口水暂停','离开桌子\n去喝一杯水\n给自己30秒缓冲')">
+            <span class="sos-icon">💧</span>
+            <div>
+              <div style="font-size:17px;font-weight:900;">喝 口 水</div>
+              <div style="font-size:12px;opacity:0.7;margin-top:2px;">物理移动，打断情绪链</div>
+            </div>
+          </button>
+          <button class="sos-btn pause" onclick="startMeditation('暂停辅导','现在先停下来\n告诉孩子：\n"我们休息一下，5分钟后继续"')">
+            <span class="sos-icon">⏸️</span>
+            <div>
+              <div style="font-size:17px;font-weight:900;">暂停辅导</div>
+              <div style="font-size:12px;opacity:0.7;margin-top:2px;">休息不是放弃，是更好的开始</div>
+            </div>
+          </button>
+        </div>
+        <div style="margin-top:16px;background:rgba(255,255,255,0.08);border-radius:14px;padding:14px;">
+          <div style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.7;">
+            💡 <strong style="color:white;">记住：</strong>孩子看到妈妈情绪失控时，大脑会进入"战或逃"模式，此时学习效率为零。你先平静，才是最高效的辅导。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 台词本 -->
+    <div class="mom-panel" id="mom-panel-1">
+      <div style="padding:0 16px;flex:1;">
+        <div class="script-tabs">
+          <button class="script-tab active" onclick="switchScriptTab(0)">📖 语文辅导</button>
+          <button class="script-tab" onclick="switchScriptTab(1)">🔤 英语辅导</button>
+        </div>
+        <div id="script-content" style="max-height:calc(100vh - 280px);overflow-y:auto;padding-bottom:20px;"></div>
+        <div class="script-scroll-hint">↑ 向上滑动查看更多台词 ↑</div>
+      </div>
+    </div>
+
+    <!-- 数据面板 -->
+    <div class="mom-panel" id="mom-panel-2">
+      <div style="padding:0 16px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div style="background:rgba(255,255,255,0.1);border-radius:18px;padding:20px;text-align:center;">
+            <div style="font-size:36px;font-weight:900;color:#FFD700;" id="data-medals">0</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:4px;">总勋章数</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.1);border-radius:18px;padding:20px;text-align:center;">
+            <div style="font-size:36px;font-weight:900;color:#64DFDF;" id="data-sun">0</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:4px;">阳光值</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.1);border-radius:18px;padding:20px;text-align:center;">
+            <div style="font-size:36px;font-weight:900;color:#FF6B6B;" id="data-screen">0</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:4px;">屏幕天数</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.1);border-radius:18px;padding:20px;text-align:center;">
+            <div style="font-size:36px;font-weight:900;color:#69F0AE;" id="data-brain">0</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:4px;">大脑升级</div>
+          </div>
+        </div>
+        <button class="confirm-btn" style="background:linear-gradient(135deg,#FF5252,#B71C1C);color:white;margin-top:16px;font-size:15px;" onclick="confirmReset()">🗑️ 重置所有数据</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== 妈妈验证弹窗 ===== -->
+<div class="modal-overlay" id="verify-modal">
+  <div class="modal-box">
+    <div class="mom-verify">
+      <div class="verify-icon">🔐</div>
+      <div class="verify-title">需要妈妈来确认！</div>
+      <div class="verify-sub" id="verify-sub-text">输入密码解锁，或长按橙色按钮3秒</div>
+      <div class="pin-input">
+        <div class="pin-dot" id="pin0"></div>
+        <div class="pin-dot" id="pin1"></div>
+        <div class="pin-dot" id="pin2"></div>
+        <div class="pin-dot" id="pin3"></div>
+      </div>
+      <div class="numpad">
+        <button class="numpad-btn" onclick="inputPin(1)">1</button>
+        <button class="numpad-btn" onclick="inputPin(2)">2</button>
+        <button class="numpad-btn" onclick="inputPin(3)">3</button>
+        <button class="numpad-btn" onclick="inputPin(4)">4</button>
+        <button class="numpad-btn" onclick="inputPin(5)">5</button>
+        <button class="numpad-btn" onclick="inputPin(6)">6</button>
+        <button class="numpad-btn" onclick="inputPin(7)">7</button>
+        <button class="numpad-btn" onclick="inputPin(8)">8</button>
+        <button class="numpad-btn" onclick="inputPin(9)">9</button>
+        <button class="numpad-btn del" onclick="inputPin('del')">⌫</button>
+        <button class="numpad-btn" onclick="inputPin(0)">0</button>
+        <button class="numpad-btn ok" onclick="inputPin('ok')">✓</button>
+      </div>
+      <!-- 长按3秒备用验证方式 -->
+      <button class="hold-btn" id="hold-verify-btn">
+        <div class="hold-progress" id="hold-progress"></div>
+        <span style="position:relative;z-index:1;">或者：长按我 3 秒解锁 👆</span>
+      </button>
+    </div>
+    <button class="modal-btn secondary" style="margin-top:12px;width:100%;" onclick="closeVerifyModal()">取消</button>
+  </div>
+</div>
+
+
+<!-- ===== 通用提示弹窗 ===== -->
+<div class="modal-overlay" id="general-modal">
+  <div class="modal-box">
+    <div style="font-size:48px;text-align:center;margin-bottom:12px;" id="gm-icon">🎉</div>
+    <div class="modal-title" id="gm-title">标题</div>
+    <div class="modal-text" id="gm-text">内容</div>
+    <div class="modal-btns" id="gm-btns">
+      <button class="modal-btn primary" onclick="closeGeneralModal()">好的！</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== 冥想全屏 ===== -->
+<div id="meditation-overlay">
+  <div class="med-circle">
+    <div class="med-inner"></div>
+  </div>
+  <div class="med-count" id="med-count">30</div>
+  <div class="med-text" id="med-text">深呼吸...</div>
+  <button class="med-skip" onclick="closeMeditation()">结束 ✓</button>
+</div>
+
+
+<!-- ===== 庆祝粒子 ===== -->
+<div class="confetti-container" id="confetti-container"></div>
+
+
+<!-- ===== 升级横幅 ===== -->
+<div class="level-up-banner" id="level-up-banner">
+  <div class="lvl-text" id="lvl-text">🎉 大脑升级！</div>
+  <div class="lvl-sub" id="lvl-sub">智力 +1</div>
+</div>
+
+<!-- 射击特效 -->
+<div class="shoot-effect" id="shoot-effect">🚀</div>
+
+
+<script>
+// ===============================
+// 数据层：LocalStorage 读写
+// 设计意图：所有进度数据持久化，
+// 孩子每次打开都能看到积累的成就感
+// ===============================
+const STORAGE_KEY = 'brain_racer_v1';
+
+function loadData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return getDefaultData();
+  try { return {...getDefaultData(), ...JSON.parse(raw)}; }
+  catch(e) { return getDefaultData(); }
+}
+
+function getDefaultData() {
+  return {
+    sun: 0,          // 阳光值（语文/英语复习奖励）
+    medals: 0,       // 总勋章数
+    weekMedals: 0,   // 本周勋章
+    exp: 0,          // 大脑经验
+    screenDays: 0,   // 屏幕日次数
+    attrs: { int: 0, end: 0, cre: 0 }, // 三属性
+    brainToday: 0,   // 今日大脑升级次数
+    lastDate: '',    // 上次使用日期（用于每日重置）
+    funDone: false,  // 今日娱乐是否已选
+    funChoice: '',   // 今日选择
+    weekMedalList: [], // 本周勋章时间戳列表
+  };
+}
+
+function saveData(d) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+}
+
+// 每日重置检查
+function checkDailyReset(d) {
+  const today = new Date().toDateString();
+  if (d.lastDate !== today) {
+    d.lastDate = today;
+    d.funDone = false;
+    d.funChoice = '';
+    d.brainToday = 0;
+    // 每周一重置本周勋章
+    const now = new Date();
+    if (now.getDay() === 1) {
+      d.weekMedals = 0;
+      d.weekMedalList = [];
+    }
+  }
+  return d;
+}
+
+// ===============================
+// 界面层：页面切换
+// ===============================
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'page-main') refreshMainUI();
+  if (id === 'page-medals') refreshMedalsUI();
+  if (id === 'page-brain') refreshBrainUI();
+  if (id === 'page-fun') refreshFunUI();
+  if (id === 'page-mom') refreshMomData();
+}
+
+// ===============================
+// 主界面刷新
+// ===============================
+const quotes = [
+  "今天的错题，是明天的超级燃料！🔥",
+  "大脑就像肌肉，越用越强壮！💪",
+  "每一个不懂的字，都是等你解锁的宝箱！📦",
+  "聪明不是天生的，是一道题一道题练出来的！⚡",
+  "错了？太棒了！你刚刚发现了一个弱点，快去消灭它！🎯",
+  "今天比昨天多懂一点点，你就赢了！🏆",
+  "世界上所有厉害的人，都不怕犯错误！🌟",
+  "每次你想放弃的时候，大脑正在偷偷变强！🧠",
+  "勇气不是不害怕，是虽然害怕也去做！🦁",
+];
+
+function refreshMainUI() {
+  let d = loadData();
+  d = checkDailyReset(d);
+  saveData(d);
+  document.getElementById('sun-display').textContent = d.sun;
+  document.getElementById('medal-display').textContent = d.medals;
+  document.getElementById('exp-display').textContent = d.exp;
+  const expPct = Math.min(100, (d.exp % 20) * 5);
+  document.getElementById('exp-bar').style.width = expPct + '%';
+  // 随机语录
+  document.getElementById('quote-text').textContent = quotes[Math.floor(Math.random() * quotes.length)];
+}
+
+// ===============================
+// 娱乐时间模块
+// SDT理论：给予真实的自主感
+// 选非屏幕选项 = 主动行为 = 内在动机
+// ===============================
+function refreshFunUI() {
+  let d = loadData();
+  d = checkDailyReset(d);
+  const funs = ['fun-draw','fun-sport','fun-create','fun-ai','fun-screen'];
+  funs.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = d.funDone;
+  });
+  const txt = document.getElementById('today-choice-text');
+  if (d.funDone && d.funChoice) {
+    txt.textContent = `已选「${d.funChoice}」✅`;
+  } else {
+    txt.textContent = '还没选哦';
+  }
+}
+
+function chooseFun(name, icon) {
+  let d = loadData();
+  if (d.funDone) return;
+  d.funDone = true;
+  d.funChoice = name;
+  d.medals += 1;
+  d.weekMedals += 1;
+  d.weekMedalList.push(Date.now());
+  saveData(d);
+  refreshFunUI();
+  refreshMainUI();
+  showConfetti();
+  setTimeout(() => {
+    showModal('🎖️', `「${name}」选得好！`, `你获得了 1 枚能量勋章！\n总勋章：${d.medals} 枚\n\n继续加油，向大目标冲刺！`, [{text:'耶！收下了！', cls:'primary', fn: null}]);
+  }, 600);
+}
+
+// 屏幕选项：温和摩擦，非惩罚
+function chooseScreen() {
+  let d = loadData();
+  if (d.funDone) return;
+  showModal('📱', '选这个今天就没有勋章哦', '确定要选看屏幕吗？\n选其他的可以获得能量勋章～\n（不强迫，只是提醒你哦）', [
+    {text: '换一个！', cls:'primary', fn: null},
+    {text: '没事，选屏幕', cls:'secondary', fn: () => {
+      d.funDone = true;
+      d.funChoice = '看屏幕';
+      d.screenDays += 1;
+      saveData(d);
+      refreshFunUI();
+      closeGeneralModal();
+    }}
+  ]);
+}
+
+// ===============================
+// 僵尸副本模块
+// 将枯燥的复习数量转化为视觉上可消灭的敌人
+// ===============================
+let currentZombieSubject = '';
+let zombieCount = 0;
+
+function startZombieChallenge(subject) {
+  currentZombieSubject = subject;
+  zombieCount = 0;
+  document.getElementById('zombie-select').style.display = 'none';
+  document.getElementById('zombie-input').style.display = 'block';
+  document.getElementById('zombie-input-title').textContent = `今天复习了几个${subject === '语文' ? '生字' : '单词'}？`;
+  document.getElementById('zombie-count').textContent = 0;
+  renderZombieBattleField(0);
+}
+
+function cancelZombie() {
+  document.getElementById('zombie-select').style.display = 'flex';
+  document.getElementById('zombie-input').style.display = 'none';
+}
+
+function adjustCount(delta) {
+  zombieCount = Math.max(0, Math.min(50, zombieCount + delta));
+  document.getElementById('zombie-count').textContent = zombieCount;
+  renderZombieBattleField(zombieCount);
+}
+
+function renderZombieBattleField(n) {
+  const field = document.getElementById('zombie-battle-field');
+  field.innerHTML = '';
+  for (let i = 0; i < Math.min(n, 30); i++) {
+    const z = document.createElement('div');
+    z.className = 'mini-zombie';
+    z.textContent = ['🧟','🧟‍♂️','🧟‍♀️'][i % 3];
+    z.style.animationDelay = (i * 0.1) + 's';
+    field.appendChild(z);
+  }
+  if (n > 30) {
+    const more = document.createElement('div');
+    more.style.cssText = 'color:rgba(255,255,255,0.7);font-size:14px;font-weight:700;padding:8px;';
+    more.textContent = `+${n-30} 更多僵尸！`;
+    field.appendChild(more);
+  }
+  if (n === 0) {
+    field.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:14px;padding:16px;">按 + 召唤僵尸...</div>';
+  }
+}
+
+// ===============================
+// 妈妈验证模块
+// 设计意图：需要妈妈参与 = 家长监督 + 联结时刻
+// 密码验证创造"成人权限"的仪式感
+// ===============================
+let verifyContext = '';
+let pinCode = '';
+const PARENT_PIN = '1234'; // 默认密码，可改
+
+function showMomVerify(ctx) {
+  if (ctx === 'zombie' && zombieCount === 0) {
+    showModal('⚠️', '还没有僵尸哦！', '先用 + 按钮输入今天复习的数量吧！', [{text:'好的', cls:'primary', fn:null}]);
+    return;
+  }
+  verifyContext = ctx;
+  pinCode = '';
+  updatePinDots();
+  document.getElementById('verify-modal').classList.add('show');
+  setupHoldButton();
+}
+
+function closeVerifyModal() {
+  document.getElementById('verify-modal').classList.remove('show');
+  pinCode = '';
+  updatePinDots();
+  clearHoldTimer();
+}
+
+function inputPin(val) {
+  if (val === 'del') {
+    pinCode = pinCode.slice(0, -1);
+  } else if (val === 'ok') {
+    checkPin();
+    return;
+  } else {
+    if (pinCode.length >= 4) return;
+    pinCode += val;
+    if (pinCode.length === 4) setTimeout(checkPin, 100);
+  }
+  updatePinDots();
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById('pin' + i);
+    if (d) d.classList.toggle('filled', i < pinCode.length);
+  }
+}
+
+function checkPin() {
+  if (pinCode === PARENT_PIN) {
+    closeVerifyModal();
+    onVerifySuccess();
+  } else {
+    // 错误时抖动提示
+    const pinInput = document.querySelector('.pin-input');
+    pinInput.style.animation = 'none';
+    setTimeout(() => {
+      pinInput.style.animation = 'shake 0.4s ease';
+    }, 10);
+    pinCode = '';
+    updatePinDots();
+    setTimeout(() => pinInput.style.animation = '', 500);
+  }
+}
+
+// 长按3秒验证
+let holdTimer = null;
+let holdInterval = null;
+
+function setupHoldButton() {
+  const btn = document.getElementById('hold-verify-btn');
+  const prog = document.getElementById('hold-progress');
+  let startTime = null;
+
+  function startHold(e) {
+    e.preventDefault();
+    startTime = Date.now();
+    prog.style.transition = 'width 3s linear';
+    prog.style.width = '100%';
+    holdTimer = setTimeout(() => {
+      closeVerifyModal();
+      onVerifySuccess();
+    }, 3000);
+  }
+
+  function endHold() {
+    clearTimeout(holdTimer);
+    prog.style.transition = 'none';
+    prog.style.width = '0%';
+  }
+
+  btn.removeEventListener('touchstart', btn._startHold);
+  btn.removeEventListener('touchend', btn._endHold);
+  btn.removeEventListener('mousedown', btn._startHold);
+  btn.removeEventListener('mouseup', btn._endHold);
+  btn._startHold = startHold;
+  btn._endHold = endHold;
+  btn.addEventListener('touchstart', startHold, {passive:false});
+  btn.addEventListener('touchend', endHold);
+  btn.addEventListener('mousedown', startHold);
+  btn.addEventListener('mouseup', endHold);
+}
+
+function clearHoldTimer() {
+  clearTimeout(holdTimer);
+  const prog = document.getElementById('hold-progress');
+  if (prog) { prog.style.transition='none'; prog.style.width='0%'; }
+}
+
+// 验证成功后的奖励逻辑
+function onVerifySuccess() {
+  let d = loadData();
+  if (verifyContext === 'zombie') {
+    const reward = zombieCount * 5;
+    d.sun += reward;
+    d.exp += zombieCount;
+    saveData(d);
+    // 射击动画 → 消灭僵尸
+    triggerShootAnimation(() => {
+      const field = document.getElementById('zombie-battle-field');
+      const zombies = field.querySelectorAll('.mini-zombie');
+      zombies.forEach((z, i) => {
+        setTimeout(() => z.classList.add('dying'), i * 60);
+      });
+      setTimeout(() => {
+        showModal('🎉', `${currentZombieSubject}僵尸全部消灭！`, `消灭了 ${zombieCount} 只僵尸！\n获得 ☀️${reward} 阳光值！\n大脑经验 +${zombieCount}！\n\n你真的很厉害！`, [{text:'耶！太爽了！', cls:'primary', fn: () => {
+          cancelZombie();
+          refreshMainUI();
+        }}]);
+        showConfetti();
+      }, zombieCount * 60 + 300);
+    });
+  } else if (verifyContext === 'brain') {
+    // 成长型思维核心：将错题复习变成角色属性升级
+    // 随机选一个属性提升，增加神秘感
+    const attrKeys = ['int','end','cre'];
+    const attrNames = {int:'智力值',end:'耐力值',cre:'创造力'};
+    const chosen = attrKeys[Math.floor(Math.random() * 3)];
+    d.attrs[chosen] += 1;
+    d.exp += 5;
+    d.brainToday += 1;
+    saveData(d);
+    refreshBrainUI();
+    triggerNeuronAnimation();
+    setTimeout(() => {
+      showLevelUpBanner(`🧠 大脑物理升级！`, `${attrNames[chosen]} +1 · 更强壮了！`);
+      refreshMainUI();
+    }, 1200);
+  }
+}
+
+// ===============================
+// 大脑进化界面刷新
+// ===============================
+function refreshBrainUI() {
+  const d = loadData();
+  const max = 20;
+  ['int','end','cre'].forEach(k => {
+    const v = d.attrs[k] || 0;
+    document.getElementById('attr-' + k).textContent = v;
+    document.getElementById('bar-' + k).style.width = Math.min(100, v / max * 100) + '%';
+  });
+  document.getElementById('brain-today').textContent = d.brainToday || 0;
+}
+
+// ===============================
+// 勋章宝库界面刷新
+// ===============================
+function refreshMedalsUI() {
+  const d = loadData();
+  document.getElementById('total-medals-display').textContent = d.medals;
+  document.getElementById('week-medals-display').textContent = d.weekMedals;
+  document.getElementById('screen-days-display').textContent = d.screenDays;
+  // 进度条
+  const wm = Math.min(d.weekMedals, 7);
+  document.getElementById('goal1-status').textContent = `${d.weekMedals}/7`;
+  document.getElementById('goal1-bar').style.width = (wm/7*100) + '%';
+  const m2 = Math.min(d.medals, 25);
+  document.getElementById('goal2-status').textContent = `${d.medals}/25`;
+  document.getElementById('goal2-bar').style.width = (m2/25*100) + '%';
+  const m3 = Math.min(d.medals, 100);
+  document.getElementById('goal3-status').textContent = `${d.medals}/100`;
+  document.getElementById('goal3-bar').style.width = (m3/100*100) + '%';
+  // 展示本周勋章
+  const grid = document.getElementById('weekly-medals-grid');
+  grid.innerHTML = '';
+  const medalEmojis = ['🥇','🏅','⭐','🌟','✨','💫','🎖️'];
+  for (let i = 0; i < d.weekMedals; i++) {
+    const chip = document.createElement('div');
+    chip.className = 'medal-chip';
+    chip.style.setProperty('--i', i);
+    chip.textContent = medalEmojis[i % medalEmojis.length];
+    grid.appendChild(chip);
+  }
+  if (d.weekMedals === 0) {
+    grid.innerHTML = '<div style="color:rgba(255,255,255,0.3);font-size:13px;padding:8px;">还没有勋章，快去赚第一枚！</div>';
+  }
+}
+
+// ===============================
+// 妈妈专区数据刷新
+// ===============================
+function refreshMomData() {
+  const d = loadData();
+  document.getElementById('data-medals').textContent = d.medals;
+  document.getElementById('data-sun').textContent = d.sun;
+  document.getElementById('data-screen').textContent = d.screenDays;
+  document.getElementById('data-brain').textContent = (d.attrs.int||0) + (d.attrs.end||0) + (d.attrs.cre||0);
+  renderScriptContent(0);
+}
+
+// ===============================
+// 妈妈专区：隐藏入口逻辑
+// 设计意图：连续点击5次触发，门槛够高防止孩子误触
+// ===============================
+let secretClickCount = 0;
+let secretTimer = null;
+function handleSecretTrigger() {
+  secretClickCount++;
+  clearTimeout(secretTimer);
+  secretTimer = setTimeout(() => { secretClickCount = 0; }, 2000);
+  if (secretClickCount >= 5) {
+    secretClickCount = 0;
+    showPage('page-mom');
+  }
+}
+
+// ===============================
+// 妈妈专区：Tab切换
+// ===============================
+function switchMomTab(idx) {
+  document.querySelectorAll('.mom-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+  document.querySelectorAll('.mom-panel').forEach((p,i) => p.classList.toggle('active', i===idx));
+  if (idx === 1) renderScriptContent(currentScriptTab);
+}
+
+let currentScriptTab = 0;
+function switchScriptTab(idx) {
+  currentScriptTab = idx;
+  document.querySelectorAll('.script-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+  renderScriptContent(idx);
+}
+
+// ===============================
+// 苏格拉底式辅导话术数据库
+// 设计意图：将妈妈的"直接喂答案"习惯
+// 替换为引发孩子主动思考的提问方式
+// ===============================
+const scriptData = {
+  cn: [
+    { bad:"这道题选A，赶紧写上去。", good:"你来找找，哪个选项的意思跟前面那句话最配？就像警察找嫌疑人一样，找线索！" },
+    { bad:"你怎么又错了这个字！", good:"哦，你写的这个字，哪个笔画位置跟课本上的不一样？你能找出来吗？" },
+    { bad:"这段话的中心思想是……（直接说出）", good:"如果这篇文章只能留一句话，你觉得作者最想说什么？" },
+    { bad:"不对不对，重来！", good:"嗯，这个答案有点意思，你是怎么想到的？说给妈妈听听？" },
+    { bad:"你不好好想，就是不认真！", good:"我看你皱眉头了，是不是有哪个地方让你觉得奇怪？说出来我们一起看看。" },
+    { bad:"这词是什么意思你都不知道？", good:"如果你是作者，用这个词，你想让读者感觉到什么？" },
+    { bad:"快点，磨蹭什么！", good:"没关系，慢慢来，我等你。把你现在的想法，先随便说一个？" },
+  ],
+  en: [
+    { bad:"这个单词拼 C-A-T，你记住了吗？（直接报答案）", good:"你觉得这个单词里，哪几个字母是你认识的老朋友？先圈出来？" },
+    { bad:"你怎么连这个都不会，上课没认真听吗？", good:"OK，这个词对你来说是新朋友。我们来给它编一个小故事记住它，好不好？" },
+    { bad:"答案是B，选B！", good:"把A和B的意思都说一遍，说完我们再一起看哪个更合适？" },
+    { bad:"我说了三遍了，你到底记没记住！", good:"没事，我们换个方法。你能用这个词造一个搞笑的句子吗？" },
+    { bad:"这句话语法是错的，应该是……（直接改）", good:"你读一下这个句子，感觉哪里有点怪怪的？中文翻译出来通顺吗？" },
+    { bad:"加油！别那么懒！", good:"你刚才说对了一部分，那部分真的很棒！我们就从那里继续，好吗？" },
+    { bad:"这段对话意思是……（直接翻译）", good:"你能不能从这段里，找一个你绝对认识的单词，然后猜猜大概在聊什么？" },
+  ]
+};
+
+function renderScriptContent(tabIdx) {
+  const data = tabIdx === 0 ? scriptData.cn : scriptData.en;
+  const container = document.getElementById('script-content');
+  if (!container) return;
+  container.innerHTML = data.map(item => `
+    <div class="script-card">
+      <div class="script-bad">
+        <div class="script-bad-label">❌ 不要这样说</div>
+        <div class="script-bad-text">"${item.bad}"</div>
+      </div>
+      <div class="script-good">
+        <div class="script-good-label">✅ 试试这样说</div>
+        <div class="script-good-text">"${item.good}"</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===============================
+// 冥想/情绪急救
+// ===============================
+let medInterval = null;
+function startMeditation(title, text) {
+  let count = 30;
+  document.getElementById('med-count').textContent = count;
+  document.getElementById('med-text').textContent = text;
+  document.getElementById('meditation-overlay').classList.add('show');
+  clearInterval(medInterval);
+  medInterval = setInterval(() => {
+    count--;
+    document.getElementById('med-count').textContent = count;
+    if (count <= 0) closeMeditation();
+  }, 1000);
+}
+
+function closeMeditation() {
+  clearInterval(medInterval);
+  document.getElementById('meditation-overlay').classList.remove('show');
+}
+
+// ===============================
+// 通用弹窗系统
+// ===============================
+let modalCallbacks = [];
+function showModal(icon, title, text, btns) {
+  document.getElementById('gm-icon').textContent = icon;
+  document.getElementById('gm-title').textContent = title;
+  document.getElementById('gm-text').textContent = text;
+  const btnsEl = document.getElementById('gm-btns');
+  btnsEl.innerHTML = '';
+  modalCallbacks = [];
+  btns.forEach((b, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'modal-btn ' + (b.cls || 'primary');
+    btn.textContent = b.text;
+    btn.onclick = () => {
+      closeGeneralModal();
+      if (b.fn) b.fn();
+    };
+    btnsEl.appendChild(btn);
+    modalCallbacks.push(b.fn);
+  });
+  document.getElementById('general-modal').classList.add('show');
+}
+
+function closeGeneralModal() {
+  document.getElementById('general-modal').classList.remove('show');
+}
+
+// ===============================
+// 庆祝粒子特效
+// ===============================
+const confettiColors = ['#FFD700','#FF6B6B','#69F0AE','#64DFDF','#CE93D8','#FFB74D','#64B5F6'];
+function showConfetti() {
+  const container = document.getElementById('confetti-container');
+  container.innerHTML = '';
+  container.classList.add('show');
+  for (let i = 0; i < 40; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.cssText = `
+      left: ${Math.random()*100}%;
+      width: ${6+Math.random()*10}px;
+      height: ${6+Math.random()*10}px;
+      background: ${confettiColors[Math.floor(Math.random()*confettiColors.length)]};
+      border-radius: ${Math.random()>0.5?'50%':'3px'};
+      animation-delay: ${Math.random()*0.5}s;
+      animation-duration: ${1+Math.random()*0.8}s;
+    `;
+    container.appendChild(c);
+  }
+  setTimeout(() => { container.classList.remove('show'); container.innerHTML=''; }, 2500);
+}
+
+// ===============================
+// 升级横幅特效
+// ===============================
+function showLevelUpBanner(title, sub) {
+  const banner = document.getElementById('level-up-banner');
+  document.getElementById('lvl-text').textContent = title;
+  document.getElementById('lvl-sub').textContent = sub;
+  banner.classList.add('show');
+  showConfetti();
+  setTimeout(() => banner.classList.remove('show'), 2500);
+}
+
+// ===============================
+// 射击动画
+// ===============================
+function triggerShootAnimation(callback) {
+  const el = document.getElementById('shoot-effect');
+  el.style.display = 'block';
+  setTimeout(() => {
+    el.style.display = 'none';
+    if (callback) callback();
+  }, 850);
+}
+
+// ===============================
+// 神经元连接动画（大脑升级时）
+// ===============================
+function triggerNeuronAnimation() {
+  // 用Canvas绘制神经元连接特效
+  let overlay = document.getElementById('neuron-overlay');
+  if (!overlay) {
+    overlay = document.createElement('canvas');
+    overlay.id = 'neuron-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;z-index:5000;pointer-events:none;';
+    document.body.appendChild(overlay);
+  }
+  overlay.width = window.innerWidth;
+  overlay.height = window.innerHeight;
+  const ctx = overlay.getContext('2d');
+  overlay.style.display = 'block';
+  const nodes = [];
+  for (let i = 0; i < 20; i++) {
+    nodes.push({
+      x: Math.random() * overlay.width,
+      y: Math.random() * overlay.height,
+      vx: (Math.random()-0.5) * 3,
+      vy: (Math.random()-0.5) * 3,
+      r: 3 + Math.random() * 4,
+      alpha: 0,
+    });
+  }
+  let frame = 0;
+  function animate() {
+    ctx.clearRect(0,0,overlay.width,overlay.height);
+    frame++;
+    const progress = Math.min(1, frame / 40);
+    nodes.forEach(n => {
+      n.alpha = progress;
+      n.x += n.vx;
+      n.y += n.vy;
+    });
+    // 连线
+    nodes.forEach((a, i) => {
+      nodes.forEach((b, j) => {
+        if (j <= i) return;
+        const dist = Math.hypot(a.x-b.x, a.y-b.y);
+        if (dist < 180) {
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = `rgba(100,223,223,${(1-dist/180)*0.5*a.alpha})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      });
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, a.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(100,223,223,${a.alpha})`;
+      ctx.fill();
+    });
+    if (frame < 90) requestAnimationFrame(animate);
+    else { overlay.style.display = 'none'; }
+  }
+  animate();
+}
+
+// ===============================
+// 重置确认
+// ===============================
+function confirmReset() {
+  showModal('⚠️', '确定要重置所有数据吗？', '这会清除孩子所有的勋章、阳光值和大脑进度。\n此操作不可恢复！', [
+    {text:'取消', cls:'secondary', fn:null},
+    {text:'确认重置', cls:'danger', fn:() => {
+      localStorage.removeItem(STORAGE_KEY);
+      refreshMainUI();
+      refreshMomData();
+      showModal('✅', '已重置', '所有数据已清除，重新开始！', [{text:'好的', cls:'primary', fn:null}]);
+    }}
+  ]);
+}
+
+// PIN抖动动画
+const shakeStyle = document.createElement('style');
+shakeStyle.textContent = `@keyframes shake {
+  0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)}
+}`;
+document.head.appendChild(shakeStyle);
+
+// ===============================
+// 初始化
+// ===============================
+(function init() {
+  let d = loadData();
+  d = checkDailyReset(d);
+  saveData(d);
+  refreshMainUI();
+  // 每5分钟切换语录，保持新鲜感
+  setInterval(() => {
+    if (document.getElementById('page-main').classList.contains('active')) {
+      document.getElementById('quote-text').textContent = quotes[Math.floor(Math.random()*quotes.length)];
+    }
+  }, 300000);
+})();
+</script>
+</body>
+</html>
