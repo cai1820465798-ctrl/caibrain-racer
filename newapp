@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <title>赛车打僵尸学习站</title>
+  <style>
+    :root{
+      --bg1:#61d9ff;
+      --bg2:#8df3a9;
+      --panel:#fff9e8;
+      --ink:#213547;
+      --accent:#ffb703;
+      --accent2:#fb8500;
+      --good:#2ec27e;
+      --warn:#ff6b6b;
+      --purple:#6f5ef9;
+      --blue:#2d7ff9;
+      --pink:#ff4fc3;
+      --touch:56px;
+      --radius:18px;
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+    html,body{margin:0;padding:0;height:100%;font-family:"Trebuchet MS","PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);}
+    body{
+      background: radial-gradient(circle at 20% 10%, #b5f7ff 0%, var(--bg1) 40%, var(--bg2) 100%);
+      overflow-x:hidden;
+      user-select:none;
+    }
+    .app{
+      max-width:1024px;
+      margin:0 auto;
+      padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom) 28px;
+    }
+    .card{
+      background:var(--panel);
+      border:3px solid #ffffffb3;
+      border-radius:var(--radius);
+      box-shadow:0 8px 0 #00000018, 0 12px 24px #00000020;
+      padding:14px;
+      margin:12px 0;
+      position:relative;
+      overflow:hidden;
+    }
+    .title{
+      font-size:22px;
+      font-weight:900;
+      margin:0 0 10px;
+      color:#123;
+      text-shadow:0 1px 0 #fff;
+    }
+    .tiny{font-size:12px;opacity:.7}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{
+      min-height:var(--touch);
+      min-width:110px;
+      border:none;
+      border-radius:14px;
+      background:linear-gradient(180deg,#fff,#eaf6ff);
+      box-shadow:0 6px 0 #00000020;
+      font-size:18px;
+      font-weight:900;
+      color:#153a5b;
+      padding:12px 16px;
+      cursor:pointer;
+      touch-action:manipulation;
+      transition:transform .12s, filter .2s, box-shadow .12s;
+    }
+    .btn:active{transform:translateY(4px) scale(.99);box-shadow:0 2px 0 #00000020}
+    .btn.big{flex:1 1 220px;font-size:22px;padding:16px}
+    .btn.primary{background:linear-gradient(180deg,#ffe29f,#ffb703);}
+    .btn.good{background:linear-gradient(180deg,#b8ffd8,#2ec27e);color:#043624;}
+    .btn.warn{background:linear-gradient(180deg,#ffd6d6,#ff6b6b);color:#5d1111;}
+    .btn.purple{background:linear-gradient(180deg,#d8d3ff,#6f5ef9);color:#130c4f;}
+    .btn.blue{background:linear-gradient(180deg,#d6e7ff,#2d7ff9);color:#05254f;}
+    .btn.gray{filter:grayscale(1) brightness(.8);opacity:.7;pointer-events:none;}
+    .main-stage{
+      background:linear-gradient(180deg,#eaf9ff,#ddfff0);
+      border-radius:16px;
+      padding:12px;
+    }
+    .road{
+      position:relative;
+      height:120px;
+      border-radius:12px;
+      background:
+        repeating-linear-gradient(90deg,#666 0 18px,#7c7c7c 18px 36px);
+      overflow:hidden;
+      border:4px solid #fff;
+    }
+    .road::after{
+      content:"";
+      position:absolute;left:0;right:0;top:50%;
+      height:6px;transform:translateY(-50%);
+      background: repeating-linear-gradient(90deg,#fff 0 24px,transparent 24px 48px);
+      animation:roadMove 1s linear infinite;
+      opacity:.9;
+    }
+    @keyframes roadMove{from{background-position:0 0}to{background-position:-48px 0}}
+    .car{
+      position:absolute;left:12px;top:40px;
+      font-size:56px;filter:drop-shadow(0 2px 0 #0004);
+      transition:left .6s cubic-bezier(.19,.89,.4,1.2), transform .2s;
+      z-index:3;
+    }
+    .car.boost{animation:boost .5s ease;}
+    @keyframes boost{0%{transform:scale(1)}50%{transform:scale(1.15) rotate(-2deg)}100%{transform:scale(1)}}
+    .boss{
+      position:absolute;right:20px;top:32px;font-size:64px;z-index:2;
+      animation:idle 1.2s infinite ease-in-out;
+    }
+    @keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+    .hud{
+      display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;
+    }
+    .meter{
+      background:#fff;border-radius:12px;padding:8px;border:2px solid #e5efff;
+    }
+    .meter strong{display:block;font-size:14px;margin-bottom:6px}
+    .bar{
+      height:16px;border-radius:999px;background:#e8edf7;overflow:hidden;
+      border:1px solid #00000015;
+    }
+    .fill{
+      height:100%;width:0;
+      background:linear-gradient(90deg,#ffcc44,#fb8500);
+      transition:width .5s;
+    }
+    .fill.exp{background:linear-gradient(90deg,#6f5ef9,#2d7ff9);}
+    .quote{
+      margin-top:10px;background:#fff;border-radius:12px;padding:10px 12px;
+      border-left:6px solid var(--pink);font-weight:900;font-size:18px;
+      animation:popIn .5s ease both;
+    }
+    @keyframes popIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+    .menu-grid{display:grid;grid-template-columns:repeat(3,minmax(130px,1fr));gap:10px}
+    @media (max-width:780px){.menu-grid{grid-template-columns:repeat(2,minmax(130px,1fr));}}
+    .menu-btn{font-size:20px;font-weight:900}
+
+    .zombie-field{
+      margin-top:10px;min-height:72px;padding:8px;border-radius:10px;background:#f4f7ff;border:2px dashed #9db0d9;
+      display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    }
+    .mini-z{
+      font-size:26px;animation:zWalk .7s infinite alternate ease-in-out;
+      transition:transform .35s, opacity .35s;
+    }
+    @keyframes zWalk{from{transform:translateX(-2px)}to{transform:translateX(2px)}}
+    .mini-z.dead{transform:translateY(-24px) rotate(-40deg) scale(.4);opacity:0;}
+
+    .brain-wrap{
+      display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:center;
+    }
+    .brain-icon{
+      width:110px;height:110px;border-radius:50%;
+      display:grid;place-items:center;font-size:64px;
+      background:radial-gradient(circle,#ffe4ff,#d3d6ff);
+      border:4px solid #fff;box-shadow:0 6px 0 #0002;
+      cursor:pointer;
+      animation:brainPulse 2s infinite;
+    }
+    @keyframes brainPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+    .attr .line{margin:6px 0}
+    .attr label{display:block;font-size:13px;font-weight:900}
+    .attr .bar{height:14px}
+    .attr .fill{background:linear-gradient(90deg,#00c2ff,#6f5ef9);}
+    .neuron{
+      position:fixed;inset:0;pointer-events:none;display:none;z-index:40;
+      background:radial-gradient(circle at center,#ffffff77,#00000088);
+    }
+    .neuron.active{display:block;animation:fadeOut 1.4s ease forwards;}
+    .spark{
+      position:absolute;width:8px;height:8px;border-radius:50%;background:#8df;
+      box-shadow:0 0 18px #8df,0 0 36px #6f5ef9;
+      animation:fly 1.1s linear forwards;
+    }
+    @keyframes fly{from{transform:translate(var(--x1),var(--y1)) scale(.7)}to{transform:translate(var(--x2),var(--y2)) scale(1.4);opacity:0}}
+    @keyframes fadeOut{to{opacity:0}}
+
+    .reward .goal{margin:10px 0;padding:8px;background:#fff;border-radius:10px;border:1px solid #eee}
+    .reward .goal strong{font-size:15px}
+    .reward small{display:block;opacity:.7;margin:4px 0}
+
+    .modal{
+      position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:60;padding:16px;
+    }
+    .modal.show{display:flex;}
+    .panel{
+      width:min(760px,95vw);max-height:90vh;overflow:auto;background:#fff;border-radius:18px;padding:16px;
+      box-shadow:0 12px 40px #0008;
+    }
+    .input{
+      width:100%;min-height:52px;border-radius:12px;border:2px solid #d5def5;padding:10px 12px;font-size:20px;
+    }
+
+    .toast{
+      position:fixed;left:50%;transform:translateX(-50%);
+      bottom:24px;background:#111;color:#fff;padding:12px 16px;border-radius:999px;z-index:80;
+      opacity:0;pointer-events:none;transition:.2s;
+      font-weight:900;
+    }
+    .toast.show{opacity:1;}
+    .confetti{
+      position:fixed;inset:0;pointer-events:none;z-index:70;
+    }
+    .piece{
+      position:absolute;width:10px;height:14px;background:var(--c);
+      left:var(--l);top:-18px;animation:fall 1.2s linear forwards;
+      transform:rotate(var(--r));
+    }
+    @keyframes fall{to{top:100vh;transform:translateX(var(--dx)) rotate(360deg);opacity:.8}}
+
+    .corner-version{
+      position:fixed;left:8px;bottom:8px;z-index:20;
+      font-size:11px;color:#1a2a33aa;background:#ffffff80;padding:4px 6px;border-radius:8px;
+    }
+
+    .meditation{
+      position:fixed;inset:0;background:#000d;display:none;z-index:100;
+      color:#fff;place-items:center;text-align:center;padding:20px;
+    }
+    .meditation.show{display:grid;}
+    .breath{
+      width:140px;height:140px;border-radius:50%;
+      border:4px solid #fff7;
+      animation:breathe 4s ease-in-out infinite;
+      margin:10px auto;
+      background:radial-gradient(circle,#fff4,#fff1);
+    }
+    @keyframes breathe{0%,100%{transform:scale(.85)}50%{transform:scale(1.15)}}
+    table{width:100%;border-collapse:collapse;background:#fff;margin-top:8px}
+    th,td{border:1px solid #e7e7e7;padding:8px;vertical-align:top}
+    th{background:#f2f6ff}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="card main-stage">
+      <h1 class="title">🏎️ 赛车打僵尸学习站</h1>
+      <div class="road" id="road">
+        <div class="car" id="car">🏎️</div>
+        <div class="boss">🧟</div>
+      </div>
+      <div class="hud">
+        <div class="meter">
+          <strong>☀️ 阳光值：<span id="sunVal">0</span></strong>
+          <div class="bar"><div class="fill" id="sunBar"></div></div>
+        </div>
+        <div class="meter">
+          <strong>🧠 大脑经验：<span id="expVal">0</span>/100</strong>
+          <div class="bar"><div class="fill exp" id="expBar"></div></div>
+        </div>
+      </div>
+      <div class="quote" id="quoteText">今天的错题，是明天的超级燃料！</div>
+    </section>
+
+    <section class="card">
+      <h2 class="title">⏰ 时光游戏娱乐菜单（每日自选）</h2>
+      <div class="menu-grid" id="menuGrid"></div>
+      <p class="tiny">每天自己选，自己负责，自己变强。</p>
+    </section>
+
+    <section class="card">
+      <h2 class="title">🧟 现实引导副本（生字词 / 单词消灭战）</h2>
+      <div class="row">
+        <button class="btn big primary" data-type="chinese">挑战语文僵尸</button>
+        <button class="btn big blue" data-type="english">挑战英语僵尸</button>
+      </div>
+      <div id="battlePanel" style="display:none;margin-top:10px;">
+        <input class="input" id="wordCountInput" type="number" min="1" max="200" placeholder="输入今天复习的数量（例如 8）" />
+        <div class="zombie-field" id="zombieField"></div>
+        <div class="row" style="margin-top:10px;">
+          <button class="btn big warn" id="momCallBtn">📣 呼叫妈妈确认</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="title">🧠 大脑进化中心</h2>
+      <div class="brain-wrap">
+        <div class="brain-icon" id="brainIcon">🧠</div>
+        <div class="attr" id="attrPanel">
+          <div class="line"><label>智力 <span id="intVal">1</span></label><div class="bar"><div class="fill" id="intBar"></div></div></div>
+          <div class="line"><label>耐力 <span id="endVal">1</span></label><div class="bar"><div class="fill" id="endBar"></div></div></div>
+          <div class="line"><label>创造力 <span id="creVal">1</span></label><div class="bar"><div class="fill" id="creBar"></div></div></div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn big purple" id="reviewMistakeBtn">我今天复习了错题</button>
+      </div>
+    </section>
+
+    <section class="card reward">
+      <h2 class="title">🏅 勋章经济与奖励陈列室</h2>
+      <p><strong>本周勋章：</strong><span id="weekMedals">0</span> / <strong>总勋章：</strong><span id="allMedals">0</span></p>
+
+      <div class="goal">
+        <strong>短期目标：本周末大餐 / 郊游（7 勋章）</strong>
+        <small id="g1Txt">0/7</small>
+        <div class="bar"><div class="fill" id="g1Bar"></div></div>
+      </div>
+      <div class="goal">
+        <strong>中期目标：解锁赛车新喷漆 / 特权（25 勋章）</strong>
+        <small id="g2Txt">0/25</small>
+        <div class="bar"><div class="fill" id="g2Bar"></div></div>
+      </div>
+      <div class="goal">
+        <strong>长期目标：终极创造者大礼包（100 勋章）</strong>
+        <small id="g3Txt">0/100</small>
+        <div class="bar"><div class="fill" id="g3Bar"></div></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="corner-version" id="secretTrigger">v1.0.7</div>
+
+  <div class="modal" id="momModal">
+    <div class="panel">
+      <h3>👩 妈妈确认</h3>
+      <p class="tiny">输入密码或长按按钮 3 秒解锁（默认密码 1234）</p>
+      <input class="input" id="momPwd" type="password" placeholder="输入妈妈密码" />
+      <div class="row" style="margin-top:10px;">
+        <button class="btn good" id="pwdUnlockBtn">密码确认</button>
+        <button class="btn" id="longPressBtn">长按我 3 秒解锁</button>
+        <button class="btn" id="closeMomModal">取消</button>
+      </div>
+      <p class="tiny" id="longPressHint"></p>
+    </div>
+  </div>
+
+  <div class="modal" id="sopModal">
+    <div class="panel">
+      <h3>🔒 妈妈专属辅导 SOP（高机密）</h3>
+      <h4>1) 情绪急救包</h4>
+      <div class="row">
+        <button class="btn warn" data-calm="深呼吸">深呼吸</button>
+        <button class="btn blue" data-calm="喝口水">喝口水</button>
+        <button class="btn purple" data-calm="暂停辅导">暂停辅导</button>
+      </div>
+      <h4>2) 苏格拉底提问台词本</h4>
+      <table>
+        <thead><tr><th>场景</th><th>错误话术（Say Not That）</th><th>专家话术（Say This）</th></tr></thead>
+        <tbody id="scriptTableBody"></tbody>
+      </table>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn" id="nextScriptBtn">下一组台词</button>
+        <button class="btn" id="closeSopBtn">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="meditation" id="meditationLayer">
+    <div>
+      <h2 id="meditationTitle">深呼吸 30 秒</h2>
+      <div class="breath"></div>
+      <h1 id="countdownNum">30</h1>
+      <p>先稳住情绪，再陪孩子思考。</p>
+    </div>
+  </div>
+
+  <div class="neuron" id="neuronLayer"></div>
+  <div class="confetti" id="confetti"></div>
+  <div class="toast" id="toast">完成</div>
+
+  <script>
+    /***********************
+     * 数据与存储层（LocalStorage）
+     * 心理学意图：把“努力与选择”可视化，减少被评价焦虑，强化可控感和成长证据。
+     ***********************/
+    const LS_KEY = "kid_learning_racer_v1";
+    const DEFAULT_DATA = {
+      sun: 20,
+      exp: 0,
+      medalsTotal: 0,
+      medalsByDate: {}, // {"2026-03-25":1}
+      menuDoneByDate: {}, // {"2026-03-25":["画画","运动"]}
+      screenDays: [], // ["2026-03-25"]
+      attrs: { int: 1, end: 1, cre: 1 },
+      momPassword: "1234",
+      lastQuoteDate: "",
+      lastQuoteText: ""
+    };
+
+    function getData(){
+      try{
+        const raw = localStorage.getItem(LS_KEY);
+        return raw ? { ...DEFAULT_DATA, ...JSON.parse(raw) } : structuredClone(DEFAULT_DATA);
+      }catch(e){
+        return structuredClone(DEFAULT_DATA);
+      }
+    }
+    function saveData(d){ localStorage.setItem(LS_KEY, JSON.stringify(d)); }
+
+    const state = getData();
+    let currentBattleType = null;
+    let pendingAction = null;
+    let scriptIndex = 0;
+
+    const quotes = [
+      "今天的错题，是明天的超级燃料！",
+      "不会只是“还不会”，你的大脑正在升级中！",
+      "你每一次坚持，都在给赛车加涡轮！",
+      "慢一点没关系，方向对了就很厉害！",
+      "勇敢尝试，比一次做对更酷！",
+      "遇到难题不是失败，是打怪入口！"
+    ];
+
+    const menuItems = ["画画","运动","创意","AI 聊天","看屏幕"];
+    const scriptSets = [
+      [
+        { s:"语文", bad:"这道题选A，赶紧写上。", good:"这个选项哪里让你觉得奇怪？" },
+        { s:"英语", bad:"你怎么又错了，背了没？", good:"你能找到题目里最关键的词吗？" }
+      ],
+      [
+        { s:"语文", bad:"别废话，按我说的做。", good:"你想先从题干还是选项开始找线索？" },
+        { s:"英语", bad:"这么简单都不会。", good:"如果把句子想成小故事，你会怎么猜意思？" }
+      ],
+      [
+        { s:"语文", bad:"你不认真才错。", good:"你愿意当小侦探，找出“陷阱词”吗？" },
+        { s:"英语", bad:"我都讲过了你还错。", good:"哪一步最卡？我们只修这一步。" }
+      ]
+    ];
+
+    const $ = s => document.querySelector(s);
+
+    function todayStr(){
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,"0");
+      const day = String(d.getDate()).padStart(2,"0");
+      return `${y}-${m}-${day}`;
+    }
+    function weekStartDate(date = new Date()){
+      const d = new Date(date);
+      const day = d.getDay() || 7;
+      d.setHours(0,0,0,0);
+      d.setDate(d.getDate() - (day - 1));
+      return d;
+    }
+    function showToast(msg){
+      const t = $("#toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      setTimeout(()=>t.classList.remove("show"),1300);
+    }
+    function confettiBurst(n=24){
+      const box = $("#confetti");
+      box.innerHTML = "";
+      const colors = ["#ff6b6b","#ffd166","#06d6a0","#4cc9f0","#f72585","#8338ec"];
+      for(let i=0;i<n;i++){
+        const p = document.createElement("div");
+        p.className = "piece";
+        p.style.setProperty("--l", (Math.random()*100)+"vw");
+        p.style.setProperty("--dx", ((Math.random()-0.5)*160)+"px");
+        p.style.setProperty("--r", (Math.random()*360)+"deg");
+        p.style.setProperty("--c", colors[Math.floor(Math.random()*colors.length)]);
+        box.appendChild(p);
+      }
+      setTimeout(()=>box.innerHTML="",1300);
+    }
+    function moveCar(step = 8){
+      const car = $("#car");
+      const road = $("#road");
+      const max = road.clientWidth - 96;
+      const now = parseFloat(car.dataset.x || "12");
+      const next = Math.min(max, now + step);
+      car.dataset.x = next;
+      car.style.left = next + "px";
+      car.classList.remove("boost");
+      void car.offsetWidth;
+      car.classList.add("boost");
+    }
+
+    function updateQuote(){
+      const td = todayStr();
+      // 心理学意图：每天一句成长型语录，降低“我不行”标签，替换成“我在升级中”。
+      if(state.lastQuoteDate !== td){
+        state.lastQuoteDate = td;
+        state.lastQuoteText = quotes[Math.floor(Math.random()*quotes.length)];
+        saveData(state);
+      }
+      $("#quoteText").textContent = state.lastQuoteText;
+    }
+
+    function weekMedalCount(){
+      const start = weekStartDate();
+      let total = 0;
+      Object.entries(state.medalsByDate).forEach(([d,c])=>{
+        const t = new Date(d+"T00:00:00");
+        if(t >= start) total += c;
+      });
+      return total;
+    }
+
+    function renderHUD(){
+      $("#sunVal").textContent = state.sun;
+      $("#expVal").textContent = state.exp;
+      $("#sunBar").style.width = Math.min(100, state.sun) + "%";
+      $("#expBar").style.width = Math.min(100, state.exp) + "%";
+
+      $("#intVal").textContent = state.attrs.int;
+      $("#endVal").textContent = state.attrs.end;
+      $("#creVal").textContent = state.attrs.cre;
+      $("#intBar").style.width = Math.min(100, state.attrs.int*5) + "%";
+      $("#endBar").style.width = Math.min(100, state.attrs.end*5) + "%";
+      $("#creBar").style.width = Math.min(100, state.attrs.cre*5) + "%";
+
+      const week = weekMedalCount();
+      $("#weekMedals").textContent = week;
+      $("#allMedals").textContent = state.medalsTotal;
+      setGoal("#g1Txt","#g1Bar",week,7);
+      setGoal("#g2Txt","#g2Bar",state.medalsTotal,25);
+      setGoal("#g3Txt","#g3Bar",state.medalsTotal,100);
+    }
+    function setGoal(t,b,val,target){
+      $(t).textContent = `${val}/${target}`;
+      $(b).style.width = Math.min(100, val/target*100)+"%";
+    }
+
+    function addMedal(cnt=1){
+      const td = todayStr();
+      state.medalsTotal += cnt;
+      state.medalsByDate[td] = (state.medalsByDate[td] || 0) + cnt;
+      saveData(state);
+      renderHUD();
+    }
+
+    function renderMenu(){
+      const box = $("#menuGrid");
+      box.innerHTML = "";
+      const td = todayStr();
+      const done = state.menuDoneByDate[td] || [];
+      menuItems.forEach(name=>{
+        const btn = document.createElement("button");
+        btn.className = "btn menu-btn " + (name==="看屏幕" ? "warn" : "good");
+        btn.textContent = name;
+        if(done.includes(name)) btn.classList.add("gray");
+        btn.onclick = ()=>onMenuClick(name);
+        box.appendChild(btn);
+      });
+    }
+
+    function onMenuClick(name){
+      const td = todayStr();
+      const done = state.menuDoneByDate[td] || [];
+      if(done.includes(name)) return;
+
+      if(name === "看屏幕"){
+        if(confirm("选这个今天就没有勋章了哦，确定吗？")){
+          done.push(name);
+          state.menuDoneByDate[td] = done;
+          if(!state.screenDays.includes(td)) state.screenDays.push(td);
+          saveData(state);
+          renderMenu();
+          showToast("已记录为屏幕日，明天继续冲刺！");
+        }
+        return;
+      }
+
+      // 心理学意图（SDT）：给非屏幕活动即时奖励，强化“自主选择也能爽”。
+      done.push(name);
+      state.menuDoneByDate[td] = done;
+      state.sun += 6;
+      state.exp = Math.min(100, state.exp + 4);
+      addMedal(1);
+      saveData(state);
+      renderMenu();
+      renderHUD();
+      confettiBurst(28);
+      moveCar(18);
+      showToast(`完成 ${name}，获得能量勋章 +1`);
+    }
+
+    function openMomConfirm(actionFn){
+      pendingAction = actionFn;
+      $("#momPwd").value = "";
+      $("#longPressHint").textContent = "";
+      $("#momModal").classList.add("show");
+    }
+    function closeMomConfirm(){
+      $("#momModal").classList.remove("show");
+      pendingAction = null;
+    }
+    function runPending(){
+      if(typeof pendingAction === "function"){
+        pendingAction();
+      }
+      closeMomConfirm();
+    }
+
+    function buildZombies(count){
+      const f = $("#zombieField");
+      f.innerHTML = "";
+      const n = Math.min(60, Math.max(1, Number(count||1)));
+      for(let i=0;i<n;i++){
+        const z = document.createElement("span");
+        z.className = "mini-z";
+        z.textContent = "🧟";
+        f.appendChild(z);
+      }
+    }
+
+    function shootZombiesAndReward(){
+      const field = $("#zombieField");
+      const list = [...field.querySelectorAll(".mini-z")];
+      let i = 0;
+      const timer = setInterval(()=>{
+        if(i >= list.length){
+          clearInterval(timer);
+          const gain = Math.max(8, list.length*2);
+          state.sun += gain;
+          state.exp = Math.min(100, state.exp + Math.ceil(list.length/2));
+          saveData(state);
+          renderHUD();
+          confettiBurst(32);
+          moveCar(24);
+          showToast(`僵尸清除！阳光值 +${gain}`);
+          return;
+        }
+        list[i].classList.add("dead");
+        i++;
+      }, 60);
+    }
+
+    function brainUpgrade(){
+      // 心理学意图：把“复盘错题”从羞耻事件，重塑为“神经连接升级事件”。
+      const keys = ["int","end","cre"];
+      const pick = keys[Math.floor(Math.random()*keys.length)];
+      state.attrs[pick] += 1;
+      state.exp = Math.min(100, state.exp + 10);
+      state.sun += 5;
+      saveData(state);
+      renderHUD();
+      playNeuron();
+      confettiBurst(20);
+      showToast("大脑物理升级成功！更强壮了！");
+    }
+
+    function playNeuron(){
+      const layer = $("#neuronLayer");
+      layer.innerHTML = "";
+      layer.classList.add("active");
+      for(let i=0;i<26;i++){
+        const s = document.createElement("div");
+        s.className = "spark";
+        s.style.left = "50%";
+        s.style.top = "50%";
+        s.style.setProperty("--x1", (Math.random()*80-40)+"px");
+        s.style.setProperty("--y1", (Math.random()*80-40)+"px");
+        s.style.setProperty("--x2", (Math.random()*700-350)+"px");
+        s.style.setProperty("--y2", (Math.random()*700-350)+"px");
+        layer.appendChild(s);
+      }
+      setTimeout(()=>layer.classList.remove("active"),1400);
+    }
+
+    function renderScriptRows(){
+      const body = $("#scriptTableBody");
+      body.innerHTML = "";
+      scriptSets[scriptIndex].forEach(r=>{
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${r.s}</td><td>${r.bad}</td><td><strong>${r.good}</strong></td>`;
+        body.appendChild(tr);
+      });
+    }
+
+    function startMeditation(type){
+      const layer = $("#meditationLayer");
+      $("#meditationTitle").textContent = `${type} 30 秒`;
+      layer.classList.add("show");
+      let sec = 30;
+      $("#countdownNum").textContent = sec;
+      const t = setInterval(()=>{
+        sec--;
+        $("#countdownNum").textContent = sec;
+        if(sec<=0){
+          clearInterval(t);
+          layer.classList.remove("show");
+          showToast("情绪稳定完成，开始温和引导。");
+        }
+      },1000);
+    }
+
+    /******** 事件绑定 ********/
+    document.querySelectorAll('[data-type="chinese"],[data-type="english"]').forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        currentBattleType = btn.dataset.type;
+        $("#battlePanel").style.display = "block";
+        $("#wordCountInput").value = "";
+        $("#zombieField").innerHTML = "";
+        showToast(currentBattleType==="chinese" ? "语文僵尸来袭！" : "英语僵尸来袭！");
+      });
+    });
+
+    $("#wordCountInput").addEventListener("input",(e)=>{
+      const v = Number(e.target.value || 0);
+      if(v>0) buildZombies(v);
+      else $("#zombieField").innerHTML = "";
+    });
+
+    $("#momCallBtn").addEventListener("click",()=>{
+      const n = Number($("#wordCountInput").value || 0);
+      if(n<=0){ showToast("先输入复习数量哦"); return; }
+      openMomConfirm(()=>shootZombiesAndReward());
+    });
+
+    $("#reviewMistakeBtn").addEventListener("click",()=>{
+      openMomConfirm(()=>brainUpgrade());
+    });
+
+    $("#brainIcon").addEventListener("click",()=>{
+      const panel = $("#attrPanel");
+      panel.style.display = panel.style.display === "none" ? "block" : "none";
+    });
+
+    $("#pwdUnlockBtn").addEventListener("click",()=>{
+      if($("#momPwd").value === state.momPassword) runPending();
+      else showToast("密码不对，再试试");
+    });
+    $("#closeMomModal").addEventListener("click", closeMomConfirm);
+
+    // 妈妈长按3秒解锁
+    let lpTimer = null, lpStart = 0;
+    const longBtn = $("#longPressBtn");
+    function startLP(){
+      lpStart = Date.now();
+      $("#longPressHint").textContent = "长按中...";
+      lpTimer = setTimeout(()=>{
+        $("#longPressHint").textContent = "已长按 3 秒，验证通过";
+        runPending();
+      },3000);
+    }
+    function endLP(){
+      clearTimeout(lpTimer);
+      if(Date.now()-lpStart < 2800){
+        $("#longPressHint").textContent = "未满 3 秒，请继续按住";
+      }
+    }
+    ["mousedown","touchstart"].forEach(ev=>longBtn.addEventListener(ev,startLP));
+    ["mouseup","mouseleave","touchend","touchcancel"].forEach(ev=>longBtn.addEventListener(ev,endLP));
+
+    // 高机密隐藏入口：双指长按3秒 或 5连击
+    // 心理学意图：保护妈妈工具不被孩子误触，避免“被管控感”。
+    const trigger = $("#secretTrigger");
+    let clickCount = 0, clickTimer = null, secretHoldTimer = null;
+
+    trigger.addEventListener("click",()=>{
+      clickCount++;
+      clearTimeout(clickTimer);
+      clickTimer = setTimeout(()=>clickCount=0,1600);
+      if(clickCount >= 5){
+        clickCount = 0;
+        $("#sopModal").classList.add("show");
+      }
+    });
+
+    trigger.addEventListener("touchstart",(e)=>{
+      if(e.touches && e.touches.length >= 2){
+        secretHoldTimer = setTimeout(()=>$("#sopModal").classList.add("show"),3000);
+      }
+    },{passive:true});
+    ["touchend","touchcancel"].forEach(ev=>{
+      trigger.addEventListener(ev,()=>clearTimeout(secretHoldTimer),{passive:true});
+    });
+
+    $("#closeSopBtn").addEventListener("click",()=>$("#sopModal").classList.remove("show"));
+    $("#nextScriptBtn").addEventListener("click",()=>{
+      scriptIndex = (scriptIndex + 1) % scriptSets.length;
+      renderScriptRows();
+    });
+    document.querySelectorAll("[data-calm]").forEach(btn=>{
+      btn.addEventListener("click",()=>startMeditation(btn.dataset.calm));
+    });
+
+    /******** 初始化 ********/
+    function init(){
+      updateQuote();
+      renderMenu();
+      renderHUD();
+      renderScriptRows();
+
+      // 初始赛车位置
+      $("#car").dataset.x = "12";
+      $("#car").style.left = "12px";
+    }
+    init();
+  </script>
+</body>
+</html>
